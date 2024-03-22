@@ -229,7 +229,7 @@ export const verifyToken = async (req, res) => {
       user.verificationToken = null;
       await user.save();
   
-      res.redirect(process.env.SERVER_URL); // Redirect to a success page
+      res.redirect(process.env.CLIENT_URL); // Redirect to a success page
 
     } catch (error) {
       console.error(error);
