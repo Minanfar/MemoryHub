@@ -19,6 +19,7 @@ export const postSignupController = async (req, res) => {
     try {
         const saltedHashedPassword = await bcrypt.hash(password, 14);
         const verificationToken = Math.random().toString(36).substring(7);
+        console.log("verificationToken: ", verificationToken)
         const newUser = new UserModel({
             email, password: saltedHashedPassword, firstName, lastName, nickName, verificationToken
         });
