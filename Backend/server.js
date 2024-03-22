@@ -9,7 +9,8 @@ import userRouter from "./routes/userRouter.js";
 import bodyParser from 'body-parser';
 
 
-
+console.log("client:",process.env.CLIENT_URL);
+console.log("backend:",process.env.SERVER_URL);
 const PORT = process.env.PORT || 3001;
 
 await connectMongoose();
