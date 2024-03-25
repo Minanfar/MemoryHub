@@ -8,6 +8,7 @@ export const createStudySetsAndCards = async (req, res) => {
   try {
     const userId = req.params.userId;
     const { topic, title, description, createdBy, cards } = req.body;
+
     const user = await UserModel.findById(userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -19,7 +20,22 @@ export const createStudySetsAndCards = async (req, res) => {
     try {
       const savedCards = await Promise.all(
         cards.map(async (cardData) => {
-          const newCard = new CardModel(cardData);
+          if (cardData.image) {
+            const cloudinaryLink = await cloudinary.uploader.upload(
+              cardData.image
+            );
+            const newCard = new CardModel({
+              question: cardData.question,
+              answer: cardData.answer,
+              image: cloudinaryLink.secure_url,
+            });
+            return await newCard.save();
+          }
+          const newCard = new CardModel({
+            question: cardData.question,
+            answer: cardData.answer,
+            image: "",
+          });
           return await newCard.save();
         })
       );
@@ -36,15 +52,19 @@ export const createStudySetsAndCards = async (req, res) => {
       } else {
         throw new Error("Invalid topic data");
       }
+
       const newStudySet = new StudySetModel({
         title,
         description,
         createdBy,
         cards: savedCards.map((card) => card._id),
       });
+
       const savedStudySet = await newStudySet.save();
+
       topicObject.studySets.push(savedStudySet._id);
       await topicObject.save();
+
       user.savedStudySets.push({
         topic: topicObject._id,
         studySet: savedStudySet._id,
@@ -54,7 +74,9 @@ export const createStudySetsAndCards = async (req, res) => {
           answer: card.answer,
         })),
       });
+
       await user.save();
+
       res.status(201).json({
         message: "Flashcards created successfully",
         flashcards: {
@@ -90,6 +112,7 @@ export const editStudySet = async (req, res) => {
   const topicId = req.params.topicId;
   const studySetId = req.params.studySetId;
   const { topicTitle, title, description, cards } = req.body;
+
   try {
     const studySet = await StudySetModel.findByIdAndUpdate(
       studySetId,
@@ -99,10 +122,12 @@ export const editStudySet = async (req, res) => {
       },
       { new: true }
     );
+
     if (!studySet) {
       console.error("Study set not found");
       return res.status(404).json({ error: "Study set not found" });
     }
+
     const updatedCardsPromises = cards.map(async (eachCard) => {
       const cardId = eachCard.cardId;
       const status = eachCard.status || "not studied";
@@ -137,17 +162,21 @@ export const editStudySet = async (req, res) => {
         }
       } else {
         try {
-          const cloudinaryLink = await cloudinary.uploader.upload(
-            eachCard.image
-          );
+          let updateFields = {
+            question: eachCard.question,
+            answer: eachCard.answer,
+          };
+          if (eachCard.image) {
+            const cloudinaryLink = await cloudinary.uploader.upload(
+              eachCard.image
+            );
+            updateFields.image = cloudinaryLink.secure_url;
+          }
+
           const foundCard = await CardModel.findByIdAndUpdate(
             cardId,
             {
-              $set: {
-                question: eachCard.question,
-                answer: eachCard.answer,
-                image: cloudinaryLink.secure_url,
-              },
+              $set: updateFields,
             },
             { new: true }
           );
@@ -167,6 +196,7 @@ export const editStudySet = async (req, res) => {
     const updatedCards = (await Promise.all(updatedCardsPromises)).filter(
       (card) => card !== null
     );
+
     const updatedTopic = await TopicModel.findByIdAndUpdate(
       topicId,
       {
@@ -176,6 +206,7 @@ export const editStudySet = async (req, res) => {
       },
       { new: true }
     );
+
     if (!updatedTopic) {
       console.error("Topic not found");
       return res.status(404).json({ error: "Topic not found" });
@@ -241,9 +272,26 @@ export const deleteSavedStudySetInEdit = async (req, res) => {
     if (studySetIndex === -1) {
       return res.status(404).send("Study set not found in saved study sets");
     }
+    const studySet = user.savedStudySets[studySetIndex];
+
+    // Delete associated cards
+    await Promise.all(
+      studySet.cards.map(async (card) => {
+        await CardModel.findByIdAndDelete(card.card);
+      })
+    );
+
+    // Delete associated topic
+    await TopicModel.findByIdAndDelete(studySet.topic);
+
+    // Delete the study set itself
     user.savedStudySets.splice(studySetIndex, 1);
     await user.save();
-    return res.status(200).send("Study set deleted successfully");
+
+    // Delete the study set document
+    await StudySetModel.findByIdAndDelete(studySetId);
+
+    return res.status(200).send("Study set and associated data deleted successfully");
   } catch (error) {
     console.error("Error deleting study set:", error);
     return res.status(500).send("Internal Server Error");
