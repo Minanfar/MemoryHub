@@ -1,9 +1,9 @@
 ## Link to Website: www.MemoryHub-frontend.onrender.com
 steps:
-- **1.signup
-- **2.verify the registering
-- **3.login
-- **4.welcome
+- 1.signup
+- 2.verify the registering
+- 3.login
+- 4.welcome
 
  ---
 
