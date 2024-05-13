@@ -59,4 +59,4 @@ Daryna, Mina, Deniz and Reza
 
 For any questions or feedback, feel free to reach out to us at the following email address: info@Memory-hub.com
 
-Also, visit our [website](#) for more information.
+
